@@ -97,6 +97,33 @@ Unlike the E-M10 IV and E-M5 III, the OM-5 is **not** missing the profile system
 | Colour-wheel descriptor (cursor 1091 + 12 sat ids) | `0x60b40c4c` | **not found** (looked for 1086 + 922–933) | byte search [V static] |
 | Parameter-builder branches that load each profile's settings (17 ids for COLOR1, 10 for MONO1) | `0x602b814e`… (jump table `0x60460458`, modes 54–59) | **not found** as immediates; best cluster `0x60967b87` has only the 12 sector ids. The OM-5 may read them another way (unverified without a disassembler) | immediate search [V static, negative] |
 
+### Disassembly trace (2026-11-07)
+
+MN103 objdump built with `tools/setup_toolchain.sh` under WSL Ubuntu (strip the script's CRLFs first; fetch binutils
+2.45 from `ftpmirror.gnu.org` if ftp.gnu.org is slow). OM-5 addresses, base `0x60021020`.
+
+**Back end intact [V dis]:**
+- Capture mode byte (cap+28727) → job key via `0x6041eef9` / mapper `0x6037a714` (E-P7 `0x603eaa04` / `0x60349297`).
+- Converter `0x6041a5e7` `cmp 11,d0` copies the 12 saturation values from cap+28732 for mode 11 only.
+- Selector `0x603e3175` → COLOR builder `0x603e2f1c` (only caller `0x603e41eb`).
+- Property-driven fill `0x614cf122` (called from `0x614ce915`) still has mode 11 → `0x614cf736` and mode 12 → `0x614cf7da` (hash table
+  `0x615de974`). The mode-11 handler reads properties 63178, 63194 and the 63226 array (3 profiles × 12); the profile
+  index comes from 63601.
+
+**Front end missing [V dis]:**
+- The record table at cap+29490 (43 × 44 B, built by `0x602c9fa4` = E-P7 `0x603f1e9c`) has records only for modes
+  9 7 1–6 10 and Art 100–124. The E-P7's COLOR/MONO templates (`0x6053e4b8`, `0x6053e4f8`) have no OM-5 counterpart.
+- Picture-parameter builder `0x602dcce9` (E-P7 `0x602b7b71`), jump table `0x6049a4e0` (64 entries): entries 54–59
+  all go to the default `0x602dd277`. No getter calls with the profile ids (256 getter sites against 440 on the E-P7).
+- Nothing seen writes mode 11 into the capture mode byte, so the COLOR builder is dead code in stock [I].
+- Color Creator is mode 10 (template fill `0x602ca387`) and takes the general builder path [I].
+- The 12-id "cluster" at `0x60967b87` is data, not code: a record stream with ids 922–957 (COLOR 1–3 × 12) plus 1090/1091,
+  probably the OM-5's form of the wheel descriptor. No reference to it found [I].
+
+**Consequence:** adding only a mode-11 Picture Mode row would most likely give a shot without the profile's saturation
+values (defaults or an error path); a hang can't be ruled out. Reviving COLOR 1–3 needs a mode-11 record template and
+fill (E-P7 style), the property wiring from settings 922–957 to 63226/63601 (unverified), labels and an editor screen.
+
 So the profiles look like **settings and pipeline leftovers without their menu entries or editor screen**, not a feature
 switched off by one flag. Un-hiding them would mean adding Picture Mode rows (a relocated validator list, as the aspect
 patch already does), labels, a wheel editor screen and possibly the per-profile parameter packing. That is a sizeable
@@ -106,8 +133,9 @@ GUI port, but the image side (COLOR builder and its mode-11 branch) is already t
 
 Two routes for the looks, to be decided by a small on-camera experiment:
 
-- **A. Revive COLOR 1–3.** Add mode-11 rows to the Picture Mode list, then check on the camera that picking one gives a
-  normal photo and that its saturation settings take effect. If that works, the OM-3 port's editor approach applies, with
+- **A. Revive COLOR 1–3.** Port the missing front end (mode-11 record template and fill, Picture Mode rows, labels),
+  then check on the camera that a photo comes out normal and that its saturation settings take effect. The back end
+  (converter, selector, COLOR builder) is already there. After that, the OM-3 port's editor approach applies, with
   3 COLOR slots instead of 4, but the wheel screen has to be built rather than hooked.
 - **B. Host the looks on Color Creator** (stock and visible), as for the E-M5 III. Less GUI work up front, less like the
   other ports.
@@ -121,7 +149,6 @@ Either way the look format and Control Panel stay shared: one entry in `webapp/s
 
 ## Next steps
 
-1. Set up the MN103 toolchain (`tools/setup_toolchain.sh`) and disassemble the OM-5 mode-11 path and the Picture Mode
-   list builder (E-P7 `0x60de477b`), to see what feeds the COLOR builder its settings.
-2. Test ladder steps 1–3 on the body: stock 1.2 through the SD updater, restore, a firmware-screen label change.
-3. Route A experiment: COLOR 1 row added to the Picture Mode list, nothing else; shoot, compare against Vivid.
+1. Test ladder steps 1–3 on the body: stock 1.2 through the SD updater, restore, a firmware-screen label change.
+2. Decide route A or B. For A, trace whether anything maps settings 922–957 to properties 63226/63601, and port the
+   E-P7's mode-11 record template and fill before any Picture Mode row is added. A row on its own is not a safe test.
