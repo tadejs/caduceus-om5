@@ -12,7 +12,8 @@ Status: the **PEN E-P7** is tested here, and the **OM-3** has its own camera-tes
 | **E-M10 III, E-PL9** | Same main size; match not run | Probably none | Not analysed |
 | **PEN-F** | Older generation | **Yes, it has COLOR profiles** | Already served by [fishcu's PEN-F HSL mod](https://github.com/fishcu/oly_fw_analysis) |
 | **OM-3** | Same kind of firmware; 26% of edits match | **Yes, it has COLOR profiles** | **Working port:** [Caduceus for OM-3](https://github.com/androidfanman/caduceus-om3) by androidfanman. Control Panel export supported (`docs/OM3_NOTES.md`) |
-| **OM-1, OM-1 II, OM-5** | Same kind of firmware; 22-28% of edits match across the OM series | Partial profile settings, no profile screens | Quick check only |
+| **OM-5** | Same address base as the OM-3; 22% of edits match | **COLOR 1-3 and MONO 1-3 settings present** (E-P7 layout, renumbered); not in the Picture Mode list (owner-checked); pipeline branch present, editor screen absent | Analysed on disk; owner available, first camera tests not yet run (`docs/PORT_OM5.md`) |
+| **OM-1, OM-1 II** | Same kind of firmware; 22-28% of edits match across the OM series | Partial profile settings, no profile screens | Quick check only |
 | **E-M10 II** | Closer to PEN-F by layout | Has Color Creator, but predates COLOR profiles | Research only |
 
 "Match" is a static check (`tools/port_sigmatch.py`): how many E-P7 edits can be found in another body's firmware by their surrounding bytes. A match says the code looks alike. It does not say the edit is correct or safe on that body.
