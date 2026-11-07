@@ -199,12 +199,18 @@ def expand(img):
     return bytes(out)
 
 
-def repack(run_image, template_img):
-    """Re-encode each span of run_image into the template's container layout."""
+def repack(run_image, template_img, only=None):
+    """Re-encode each span of run_image into the template's container layout.
+
+    only: optional set of container offsets to re-encode; the other spans are
+    copied unchanged from template_img (their stock compressed bytes)."""
     out = bytearray(run_image)
     if len(run_image) != len(template_img):
         raise OlyError("run image and template differ in length")
     for c in find(template_img):
+        if only is not None and c.offset not in only:
+            out[c.offset:c.offset + c.raw] = template_img[c.offset:c.offset + c.raw]
+            continue
         packed = lz4_compress(run_image[c.offset:c.offset + c.raw])
         if HEAD + len(packed) > c.raw:
             raise OlyError("container at 0x%x: %d packed bytes do not fit the %d-byte span"
