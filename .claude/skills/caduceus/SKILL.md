@@ -22,7 +22,8 @@ it has been checked against the bytes and run in an emulator, and so that a rest
    `tools/bodies.py` and `references/hardware.md`, never from memory of another body. A wrong base shifts every
    derived address by 0x1000 and still looks plausible.
 4. **Emulator before camera, one feature per flash, a restore file with every package.** The E-P7 test 3 bootloop
-   came from flashing nine features at once; one feature per flash is the only way to find the culprit.
+   came from flashing seven feature groups at once (`docs/BOOTLOOP_T3.md`); one feature per flash is the only way to
+   find the culprit.
 5. **Work on a branch.** Never commit on `main`; never push or amend unless asked. Commit each verified step.
 6. **Check results yourself.** Rerun the command and compare hashes before you commit or report. A subagent saying
    "all pass" is not a result.
@@ -84,8 +85,8 @@ it has been checked against the bytes and run in an emulator, and so that a rest
   first). Clone om-emu inside WSL; a Windows clone gets CRLF and one test fails. In the other direction, release
   files checked out under `core.autocrlf` get CRLFs and `caduceus.py`'s SHA256SUMS check then fails: compare hashes
   on the bytes, not on a converted checkout.
-- The fishcu MN103 engine is a Linux binary at `external/oly_fw_analysis/toolchains/` (ignored), built from fishcu
-  commit `87ffb882` after checking pristine file hashes (the tarball hash is not reproducible). The MN103 binutils
+- The fishcu MN103 engine is a Linux binary at `external/oly_fw_analysis/toolchains/` (ignored), built from the
+  binutils-gdb commit fishcu pins, `87ffb882`, after checking pristine file hashes (the tarball hash is not reproducible). The MN103 binutils
   (`mn10300-elf-objdump`, `-as`, `-ld`) are in `~/ep7fw-toolchains/mn10300/bin`.
 - Long emulator runs (hundreds of millions of instructions) go in the background with a generous timeout.
 - Build output directories must be new and empty. Never overwrite a stock file.

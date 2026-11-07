@@ -73,7 +73,8 @@ The E-P7 table has 9 entries in the same layout, without flags. FF runs are in t
 
 (E-P7 tails for comparison, sections 0–8: 0x3ffc, 0x1cc50, 0x3880, 0x128e4, 0x9300, 0x84650, 0x44398, 0x4000, 0x4e2afe.)
 
-- Sections load **in table order**, 0 to 9 [I, from the table; the loader loop was not found]. Code hooked in an early
+- Load order is **unknown**: the loader loop was not found. Don't assume table order: the E-P7 loads 1, 7, 2–6, 8, 9
+  (`docs/BOOTLOOP_T3.md`) [V for the E-P7]. Code hooked in an early
   section must not call into a later one before that section is loaded (the OM-3 lesson).
 - Sections 5 and 6 are the compressed ones. Their tail FF (0xed40, 0x8d40) is real run-time free space, but using it
   means expanding, editing and **repacking** the container, then checking that the packed size still fits the flash span
