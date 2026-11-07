@@ -129,6 +129,37 @@ switched off by one flag. Un-hiding them would mean adding Picture Mode rows (a 
 patch already does), labels, a wheel editor screen and possibly the per-profile parameter packing. That is a sizeable
 GUI port, but the image side (COLOR builder and its mode-11 branch) is already there, which the E-M5 III and E-M10 IV lack.
 
+### Emulator (om-emu, 2026-11-07)
+
+[flatpanda/om-emu](https://github.com/flatpanda/om-emu) at `147ca89` runs the firmware's own kernel, GUI and camera
+application; OM-5 (E144) is one of its ported bodies, and its `BLOBS.sha256` pins the same OM-5 1.2 file.
+
+Setup: Node 26, in WSL Ubuntu (om-emu's paths are POSIX-only; Windows Node fails with `C:\C:\…`). Clone it inside WSL
+(a Windows clone gets CRLF line endings and one test fails). Copy the stock `.BIN`s into its `fw/`, then:
+
+```bash
+node emu/bin/fetch-fw.mjs --model E144 --bin fw/OLY_E_144_1200_0000_0000.BIN   # also E142 for the E-P7
+sha256sum --ignore-missing -c BLOBS.sha256
+node emu/bin/test-pure.mjs
+node emu/bin/modelcheck.mjs E144 --no-port   # without --no-port it rebuilds the port and needs the OM-1 (E143) blocks
+```
+
+Results [run in emulator]:
+- `test-pure`: all passed.
+- `modelcheck E144 --no-port`: **ok on the TFT and the EVF**: start, S1, S2, PLAY, INFO, MENU/DOWN/MENU, the
+  remaining-shots probe, and an 8 GiB SDHC card formatted by the firmware with S2's file read back.
+- **COLOR builder, native run on both bodies** (`debug.mjs --serve`, model via `OM_EMU_MODEL`): entry E-P7 `0x603b0068` /
+  OM-5 `0x603e2f1c`, stop at their `ret` (`0x603b0244` / `0x603e30f8`). Inputs per the disassembly: `d1` output block
+  (12 × 24 B records from +688, pointers at +3124..+3160, `d0` stored at +976), `a0` source records (2 groups × 6 × 28 B),
+  `a1` 12 signed saturation bytes indexed `2·sector + group`. Same fixture on both: saturation ramp `(i % 11) − 5`, all 0,
+  all +5, all −5. **All four cases: outputs byte-identical, no fault, the same instruction count (1550–1562).** Saturation
+  changes the output (0 against ±5).
+- The two builders' code differs only in branch targets and the gains-pointer table (E-P7 `0x60531810`, OM-5
+  `0x6056e1cc`); the 12 gain entries they point to are identical [V static].
+
+So the OM-5's dormant COLOR builder computes exactly what the E-P7's does. This tests the builder alone: what feeds it
+on the OM-5 (the missing front end above) is still the open part, and the image pipeline isn't emulated.
+
 ## Assessment
 
 Two routes for the looks, to be decided by a small on-camera experiment:
