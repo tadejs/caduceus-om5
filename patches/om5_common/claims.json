@@ -1,0 +1,24 @@
+{
+ "om5_fw_version": [
+  {
+   "addr": "0x60dc58f6",
+   "len": 7,
+   "what": "hook_v940: Body value setter call +940 (two-version Body value, widget 26)"
+  },
+  {
+   "addr": "0x60dc5952",
+   "len": 7,
+   "what": "hook_v300: Body value setter call +300 (single-version Body value, widget 18)"
+  },
+  {
+   "addr": "0x61241c7c",
+   "len": 8,
+   "what": "desc: Body row label descriptor"
+  },
+  {
+   "addr": "0x613f2ba0",
+   "len": 44,
+   "what": "ext7: fw_val, version string, label text"
+  }
+ ]
+}

@@ -158,9 +158,13 @@ def check_compressed(new_main, stock_main, stock_run, edit_spans, comp_spans, to
             raise ValueError('expanded image differs from stock outside the edits')
         changed += diff_count(new_run[a:b], stock_run[a:b])
         pos = b
-    pos = 0   # compressed bytes outside the re-encoded spans are stock bytes
+    ref = bytearray(stock_main)   # edits in plain (uncompressed) areas land at the same file offsets
+    for a, b in edit_spans:
+        if not any(o <= a < o + raw for o, raw in comp_spans):
+            ref[a:b] = new_main[a:b]
+    pos = 0   # bytes outside the re-encoded spans are stock bytes (plus the plain-area edits)
     for o, raw in sorted((o, raw) for o, raw in comp_spans if o in touched) + [(len(new_main), 0)]:
-        if new_main[pos:o] != stock_main[pos:o]:
+        if new_main[pos:o] != bytes(ref[pos:o]):
             raise ValueError('bytes outside the re-encoded spans differ from stock')
         pos = o + raw
     return changed
