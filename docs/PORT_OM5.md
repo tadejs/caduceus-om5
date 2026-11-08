@@ -377,3 +377,6 @@ Results on the owner's OM-5:
 - **C4 passed [C, 2026-11-08].** S1 no-op hook (`dc84df0b`): "Caduceus 0.2"; half-press, focus, photos, playback, menu
   and video normal. A jump from the S1 call site (section idx1) to a trampoline in the idx1 loaded tail runs without side
   effects. The press counter itself is not visible on the camera.
+- **C5 passed [C, 2026-11-08].** SD probe (`1d4459c0`): "Caduceus 0.3"; half-press, photos, playback, menu and video
+  normal both with `OM5MOD/BUNDLES.BIN` on the card and without it. File I/O from the S1 hook does not disturb the camera;
+  whether the read succeeded is not visible (the status word is in RAM only). The camera ladder C1-C5 is complete.
