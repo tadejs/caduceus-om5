@@ -46,14 +46,11 @@ with `--recompress-all`). The bootloader accepts our encoding: shown in om-emu (
 not yet on a camera.
 
 BCS table at main file `0x6fd8` (`"BCS\0"`, entries from `0x6fdc`): `{u32 dest, u32 flash src, u32 flag}`, flag 1 =
-compressed. 10 entries on the OM-5, 9 on the E-P7 (no flags). Free code space is the FF tail of each section; largest
-plain OM-5 tails: section 9 0x13d494 at `0x616a3b4c`, section 1 0x27138 at `0x605a76c8`, section 8 0x1ffb8 at
-`0x615e9848`. Full table: `docs/PORT_OM5.md`. For the E-P7 see `docs/CODE_SPACE_MAP.md` (tails in sections 1, 2, 3, 6).
+compressed. 10 entries on the OM-5, 9 on the E-P7 (no flags). Free code space is the FF tail of each section **up to its loaded end** (only the copied part exists in RAM; loaded ends by index 0..9: `0x6023e800 0x605a7800 0x60620800 0x6082b000 0x60846000 0x60cb0000 0x6133b000 0x613f3000 0x615ea000 0x6169c000`; the span tails such as section 9 0x13d494 are NOT usable). Usable: section 1 `0x605a76c8` (0x138 B), section 8 `0x615e9848` (0x7b8), section 2 `0x60620580`, section 4 `0x608458d8`; `patches/om5_common` enforces it. Full table: `docs/PORT_OM5.md`. For the E-P7 see `docs/CODE_SPACE_MAP.md` (tails in sections 1, 2, 3, 6).
 
 ## Section load order (the OM-3 bootloop lesson)
 
-Sections are copied into RAM by a loader at boot. On the E-P7 the order is 1, 7, 2, 3, 4, 5, 6, 8, 9 [V]; the OM-5
-table suggests 0 to 9 in order but the loader loop was not located [I]. An early OM-3 test bootlooped, likely because
+Sections are copied into RAM by a loader at boot. On the E-P7 the order is 1, 7, 2, 3, 4, 5, 6, 8, 9 [V]; on the OM-5 `sec_copy` `0x6004635c` is called for ids 1, 8, 2, 3, 4, 5, 6, 7, 9, 10 = table indices 0, 7, 1, 2, 3, 4, 5, 6, 8, 9 [V dis, I for run order], setting bit n-1 of `0xa2693fa0` after each copy. An early OM-3 test bootlooped, likely because
 a hook in section 2 called code in section 8 which was not loaded yet; code in sections 1-5 was safe on that
 pipeline, and reflashing a working build recovered the camera. Rule: code that runs at power-on must only call into
 sections loaded before it, and a hook placed in section N should keep its helper code in the same or an earlier one.
