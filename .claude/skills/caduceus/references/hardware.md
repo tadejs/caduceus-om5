@@ -74,8 +74,8 @@ bootloop, `docs/BOOTLOOP_T3.md`).
   early inference that a fast blink meant success was wrong; a rejected file blinks fast with no steady phase and
   writes nothing.
 - Start trigger: hold OK and switch the camera on, keep holding until the light comes on. Proven on the E-P7 and
-  OM-3 [C]; NOT proven on the OM-5 [I]. The trigger lives in code we cannot see; if the camera just boots normally,
-  nothing was written.
+  OM-3 [C], and on the OM-5 [C, owner 2026-11-08: official 1.2 file, about 1 minute steady, then about 2 Hz
+  blink until switched off, still 1.2 after]. If the camera just boots normally, nothing was written.
 - Recovery: the updater is reachable even from a boot loop (E-P7 test 3: battery out, hold OK and switch on, flash a
   stock main restore). Proven on the E-P7 only, once; a fault early enough in boot might stop it on other bodies.
   OM Workspace over USB is the official fallback (the USB opcodes are the same as PEN-F's; whether OM Workspace

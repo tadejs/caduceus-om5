@@ -364,3 +364,9 @@ Each folder has `DCOLYMP/E1449999.BIN`, `restore/E1449999.BIN` (the official fil
 | C5 | `1d4459c072807469e8aa25a6403131e158b60c0c26027e7540e315d84ea61b55` | file I/O from the hook is safe with and without the card file; "Caduceus : 0.3" |
 
 All `restore/` files: `a0c91f3a…3d11`. C2–C5 are main-only packages.
+
+Results on the owner's OM-5:
+
+- **C1 passed [C, 2026-11-08].** Hold OK + power on started the SD updater. The front orange light was steady for about
+  1 minute, then blinked about twice a second until switched off (the E-P7 success pattern). Setup > Firmware shows 1.2
+  afterwards. The trigger and the success signal are the same as on the E-P7.
