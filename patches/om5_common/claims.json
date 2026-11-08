@@ -20,5 +20,29 @@
    "len": 44,
    "what": "ext7: fw_val, version string, label text"
   }
+ ],
+ "om5_noop_hook": [
+  {
+   "addr": "0x602ed768",
+   "len": 5,
+   "what": "hook: S1 event tracker call (call TRIG,[d2,d3,a2,a3],36)"
+  },
+  {
+   "addr": "0x605a7700",
+   "len": 36,
+   "what": "tramp: nh_hook trampoline"
+  }
+ ],
+ "om5_sd_probe": [
+  {
+   "addr": "0x602ed768",
+   "len": 5,
+   "what": "hook: S1 event tracker call (call TRIG,[d2,d3,a2,a3],36)"
+  },
+  {
+   "addr": "0x605a7800",
+   "len": 344,
+   "what": "code: c5 probe code"
+  }
  ]
 }

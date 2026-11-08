@@ -85,12 +85,14 @@ def section_of(addr):
 class Claims:
     """Claim registry. Other patches' claims are read from claims.json; `save()` stores this patch's (replacing its old)."""
 
-    def __init__(self, patch):
+    def __init__(self, patch, exclusive_with=()):
+        """exclusive_with: patches that are never in the same package as this one (a later step of the camera ladder
+        replaces an earlier one), so overlapping their claims is allowed."""
         self.patch, self.mine = patch, {}
         self.others = []
         if REGISTRY.exists():
             for p, lst in json.loads(REGISTRY.read_text()).items():
-                if p != patch:
+                if p != patch and p not in exclusive_with:
                     self.others += [(int(c['addr'], 16), int(c['len']), p, c['what']) for c in lst]
 
     def _claim(self, name, addr, n, what, compressed):
