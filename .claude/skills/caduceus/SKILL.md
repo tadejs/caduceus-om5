@@ -12,10 +12,17 @@ the reference body. The OM-3 has an outside port, and the OM-5 is being ported o
 A bad flash can leave a camera in a boot loop. Everything below exists so that a package reaches a camera only after
 it has been checked against the bytes and run in an emulator, and so that a restore file always exists.
 
+**Precedence.** `AGENTS.md` and `docs/FIRMWARE_GUIDE.md` outrank this skill. If they disagree with anything here, they
+win and this skill is the one to fix. For patching or porting, read the guide first: it holds the E-P7 firmware
+facts, the hook techniques (section 9) and the incident table behind each safety rule (section 10). The skill only
+adds the OM-5 and workflow details on top.
+
 ## Hard rules
 
-1. **Never commit OM firmware bytes** or anything under `analysis/`, `stock_firmware/`, `out/`. They are gitignored;
-   check with `git check-ignore` before adding a new output folder. Firmware belongs to the manufacturer.
+1. **Never commit OM firmware bytes** or anything under `analysis/`, `stock_firmware/`, `out/`, and never a built
+   `*.pkg.bin` package or a decoded component. They are gitignored; check with `git check-ignore` before adding a new
+   output folder. Firmware belongs to the manufacturer; the repo ships edit lists and a builder that downloads the
+   official file and checks its SHA-256.
 2. **Never touch a camera.** Do not put files with an SD-update name (`E1xx9999.BIN`) where a camera could read them.
    Build into `out/` or a scratch directory. Camera steps are done by the user, one at a time, after your review.
 3. **Constants are per body.** Base address, section tails, setting ids and model code all differ. Take them from
@@ -41,12 +48,34 @@ it has been checked against the bytes and run in an emulator, and so that a rest
 - Files copied from another port stay unchanged with a source line (`webapp/src/om3.ts`, `om3names.ts`); our glue
   goes in `targets/`; credit goes in `NOTICE`.
 - Firmware stays with its port: each port keeps its own repo, install guide and bug reports. The About dialog and
-  `docs/BODIES.md` point users to the right one.
+  `docs/BODIES.md` point users to the right one. The OM-5 port has its own fork, https://github.com/tadejs/caduceus-om5;
+  OM-5 firmware work belongs there. Branch `om5-port` here is the earlier home of that work.
+- For the OM-3, `androidfanman/caduceus-om3`'s panel retires into this one only once that is agreed with its author.
+  Don't announce or act on it before then.
+
+## Patch safety rules (from `docs/FIRMWARE_GUIDE.md` sections 9 and 10)
+
+- **No absolute stores into the loaded image.** State lives in heap P or proven .bss. Stock never stores there, and the
+  one build that did crashed.
+- **`.balign 4` before `.long` tables, `.balign 2` before `.hword`.** A misaligned read crashed a camera and the
+  emulator did not catch it.
+- **No `fb`-prefixed opcodes** in hook code (the builds reject any `0xfb` byte). Keep `mul`, `div`, `ext` and `setlb`
+  out of hooks that leave by `retf`, because MDR must stay intact.
+- **Replay displaced instructions exactly** and confirm nothing branches into the middle of a jmp site
+  (`tools/ep7_xref.py --short`). Preserve flags when the displaced code ends in compare and branch.
+- **Every miss path is stock**: no card, no file, a bad file or an unknown job runs stock code with stock registers.
+- **Never CPU-read an image buffer through a raw descriptor address.** Use the window mapper, lock and flush.
+- **Card files:** range-check every byte in the loader and in every reader, and make the loader accept every byte the
+  UI can save (the MOVIE.BIN +49 incident). Save order: `.NEW` and read back, old to `.BAK`, then `.BIN` and read back.
+- **Injecting a stock feature into a new mode skips its preconditions** (COLOR Blur restarted the camera).
+- **Prove a hook is reachable** from a real event before building on it (SD loader v1 hooked a dead path).
+- **Prefer getter redirects** over changing stock state, and keep the 16-byte FF guards around claimed code space.
 
 ## Where things are
 
 | Need | Look at |
 |---|---|
+| E-P7 firmware facts, hook techniques, incident table, porting checklist | `docs/FIRMWARE_GUIDE.md` (read first) |
 | Body facts (stock name/SHA, model, base, update name, card folder) | `tools/bodies.py` (`EP7`, `OM5`); `caduceus.py` keeps a minimal copy, keep both in step |
 | Build a package | `python -I tools/build_package.py SPEC --body om5 --out DIR [--recompress-all] [--stock FILE]`; writes `patched.pkg.bin`, `restore-stock.pkg.bin`, `build.json` |
 | Release build | `python caduceus.py build --release v0.29a` must reproduce `releases/v0.29a/SHA256SUMS` |
@@ -88,7 +117,8 @@ it has been checked against the bytes and run in an emulator, and so that a rest
 - The fishcu MN103 engine is a Linux binary at `external/oly_fw_analysis/toolchains/` (ignored), built from the
   binutils-gdb commit fishcu pins, `87ffb882`, after checking pristine file hashes (the tarball hash is not reproducible). The MN103 binutils
   (`mn10300-elf-objdump`, `-as`, `-ld`) are in `~/ep7fw-toolchains/mn10300/bin`.
-- Long emulator runs (hundreds of millions of instructions) go in the background with a generous timeout.
+- Long emulator runs (hundreds of millions of instructions) go in the background with a generous timeout, one heavy
+  job at a time, under a memory cap (`systemd-run --user --scope -p MemoryMax=6G ...`).
 - Build output directories must be new and empty. Never overwrite a stock file.
 
 ## References

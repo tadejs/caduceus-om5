@@ -9,7 +9,7 @@ Sources: `tools/bodies.py`, `docs/BODIES.md`, `docs/PORT_OM5.md`, `docs/SD_UPDAT
 |---|---|---|---|---|---|---|---|
 | E-P7 1.1 | `OLY_E_142_1100_0000_0000.BIN`, 111 017 984 B, SHA `9d161012...95eaeb` | 1420 | `0x60020020` | `DCOLYMP/E1429999.BIN` | `EP7MOD` | none | Full feature set, camera-tested [C] |
 | OM-3 | (outside repo) | 1470 [I, from the update name] | `0x60021020` | `DCOLYMP/E1479999.BIN` | `OM3MOD` | see its repo | Working port by androidfanman ([caduceus-om3](https://github.com/androidfanman/caduceus-om3)) [R] |
-| OM-5 1.2 | `OLY_E_144_1200_0000_0000.BIN`, 92 274 688 B, SHA `a0c91f3a...3d11` | 1440 | `0x60021020` | `DCOLYMP/E1449999.BIN` [I] | `OM5MOD` | LZ4 sections 5 and 6 | Analysed; camera ladder C1-C5 not yet run |
+| OM-5 1.2 | `OLY_E_144_1200_0000_0000.BIN`, 92 274 688 B, SHA `a0c91f3a...3d11` | 1440 | `0x60021020` | `DCOLYMP/E1449999.BIN` [I] | `OM5MOD` | LZ4 sections 5 and 6 | Camera ladder C1-C5 passed [C, owner]; no feature shipped yet, port paused. Repo: [tadejs/caduceus-om5](https://github.com/tadejs/caduceus-om5) |
 | OM-5 Mark II | `OLY_E_148_1100_0000_0000.BIN`, 90 832 896 B | 1480 | not worked out | `E1489999.BIN` [I] | | | Not covered |
 
 Notes:
@@ -43,10 +43,10 @@ Container offsets in main: `0x825fe0` (section 5, runtime `0x60847000`-`0x60cbe8
 `0x60cbe800`-`0x61343800`). Expanded size equals the span size, so the run-time image is the same size as the file [V].
 `tools/olycompress.py` is our own LZ4 decoder and encoder; `build_package.py` re-encodes any span with edits (and both
 with `--recompress-all`). The bootloader accepts our encoding: shown in om-emu (C2 boots, 17 frames equal stock),
-not yet on a camera.
+on a camera the C1-C5 packages that use it passed [C].
 
 BCS table at main file `0x6fd8` (`"BCS\0"`, entries from `0x6fdc`): `{u32 dest, u32 flash src, u32 flag}`, flag 1 =
-compressed. 10 entries on the OM-5, 9 on the E-P7 (no flags). Free code space is the FF tail of each section **up to its loaded end** (only the copied part exists in RAM; loaded ends by index 0..9: `0x6023e800 0x605a7800 0x60620800 0x6082b000 0x60846000 0x60cb0000 0x6133b000 0x613f3000 0x615ea000 0x6169c000`; the span tails such as section 9 0x13d494 are NOT usable). Usable: section 1 `0x605a76c8` (0x138 B), section 8 `0x615e9848` (0x7b8), section 2 `0x60620580`, section 4 `0x608458d8`; `patches/om5_common` enforces it. Full table: `docs/PORT_OM5.md`. For the E-P7 see `docs/CODE_SPACE_MAP.md` (tails in sections 1, 2, 3, 6).
+compressed. 10 entries on the OM-5, 9 on the E-P7 (no flags). Free code space is the FF tail of each section **up to its loaded end** (only the copied part exists in RAM; loaded ends by index 0..9: `0x6023e800 0x605a7800 0x60620800 0x6082b000 0x60846000 0x60cb0000 0x6133b000 0x613f3000 0x615ea000 0x6169c000`; the span tails such as section 9 0x13d494 are NOT usable). Usable: section 1 `0x605a76c8` (0x138 B), section 8 `0x615e9848` (0x7b8), section 2 `0x60620580`, section 4 `0x608458d8`; `patches/om5_common` enforces it. Full table: `docs/PORT_OM5.md`. For the E-P7 see `docs/CODE_SPACE_MAP.md` and `docs/FIRMWARE_GUIDE.md` section 2: FF tails exist in sections 1, 2, 3, 5, 6, 7 and 9 (about 8.8 KB in all; avoid the section 4 tail, a zero-count initialiser points there). Section 1 also holds dead EVF gamma tables (about `0x601de13c`-`0x601e3b3c`) that Caduceus code has used since test 11; that is safe only because the E-P7 has no EVF. **Do not reuse them on a body with an EVF**, and use only FF tails on a new body until dead tables are proved.
 
 ## Section load order (the OM-3 bootloop lesson)
 

@@ -55,7 +55,8 @@ compressed. The E-P7 has none.
 
 ## 6. Check free space and section order
 
-Find code space in the FF tails of the loaded sections (section table in the hardware reference), claim a range in
+Find code space in the FF tails of the loaded sections (section table in the hardware reference; on a new body use
+only FF tails, never the E-P7's dead EVF gamma tables, which are unsafe on a body with an EVF), claim a range in
 `docs/CODE_SPACE_MAP.md` and keep a guard of untouched FF bytes at both ends. Load order is not table order on every body
 (E-P7: 1, 7, 2–6, 8, 9), so find the loader before relying on it, and hook code must not call into a section that
 loads later. For compressed sections, editing means expand, patch, repack with

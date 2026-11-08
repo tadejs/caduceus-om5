@@ -20,7 +20,15 @@ PASS/FAIL, ending `ALL PASS`:
   other callers are untouched).
 - **E emulator**: run the patched routine on the fishcu MN103 engine on stock and patched with the downstream calls
   stubbed to capture arguments; registers, stack and arguments equal stock except what you mean to change; no fault.
-  Add mutation checks (break one edit, the verifier must fail).
+  Keep the verifier **minimal plus anti-brick** (`docs/FIRMWARE_GUIDE.md` section 11): the feature's own checks, plus
+  the package checks in D. Add deeper runs and mutation checks (break one edit, the verifier must fail) only when the
+  risk is high, for example a hook that runs at power-on.
+- **Emulator blind spots** (guide section 10): it does not fault on misaligned access, run the screen stack or
+  renderer, model the cache-flush busy bit or DMA, or show ISP pixels. Cover them with static checks (alignment, store
+  audit, forbidden opcodes) and with a diagnostic the camera can report back (a record on the Firmware screen, a card
+  file written at half-press, a probe text in a label). Remove diagnostics before release. Fixtures must follow the
+  real call order (grain s2 failed because the fixture had set the marker early).
+- Run heavy emulator jobs one at a time with a memory cap (`systemd-run --user --scope -p MemoryMax=6G ...`).
 
 Other gates: `tools/ep7_verify_package.py` (container checks), `tools/test_olycompress.py` (LZ4 round trip), and the
 **regression gate**: `python caduceus.py build --release v0.29a` (or `build_package.py` on the release spec) must
