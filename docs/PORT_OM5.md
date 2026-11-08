@@ -370,3 +370,5 @@ Results on the owner's OM-5:
 - **C1 passed [C, 2026-11-08].** Hold OK + power on started the SD updater. The front orange light was steady for about
   1 minute, then blinked about twice a second until switched off (the E-P7 success pattern). Setup > Firmware shows 1.2
   afterwards. The trigger and the success signal are the same as on the E-P7.
+- **C2 passed [C, 2026-11-08].** Our LZ4 re-encoding of both compressed parts (main-only package `35411d71`): same
+  steady-then-2 Hz pattern, firmware 1.2, photo, playback, menu and half-press normal. The bootloader accepts our encoder.
