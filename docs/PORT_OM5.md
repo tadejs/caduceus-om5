@@ -374,3 +374,6 @@ Results on the owner's OM-5:
   steady-then-2 Hz pattern, firmware 1.2, photo, playback, menu and half-press normal. The bootloader accepts our encoder.
 - **C3 passed [C, 2026-11-08].** Label patch (`337b9198`): Setup > Firmware shows "Caduceus 0.1"; photo, playback, menu
   and half-press normal. A patch inside a compressed span (section 7 tail code + descriptor) runs on the camera.
+- **C4 passed [C, 2026-11-08].** S1 no-op hook (`dc84df0b`): "Caduceus 0.2"; half-press, focus, photos, playback, menu
+  and video normal. A jump from the S1 call site (section idx1) to a trampoline in the idx1 loaded tail runs without side
+  effects. The press counter itself is not visible on the camera.
