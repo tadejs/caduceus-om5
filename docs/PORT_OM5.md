@@ -372,3 +372,5 @@ Results on the owner's OM-5:
   afterwards. The trigger and the success signal are the same as on the E-P7.
 - **C2 passed [C, 2026-11-08].** Our LZ4 re-encoding of both compressed parts (main-only package `35411d71`): same
   steady-then-2 Hz pattern, firmware 1.2, photo, playback, menu and half-press normal. The bootloader accepts our encoder.
+- **C3 passed [C, 2026-11-08].** Label patch (`337b9198`): Setup > Firmware shows "Caduceus 0.1"; photo, playback, menu
+  and half-press normal. A patch inside a compressed span (section 7 tail code + descriptor) runs on the camera.
