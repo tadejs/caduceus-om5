@@ -182,6 +182,7 @@ order of sections (table indices): 0, 7, 1, 2, 3, 4, 5, 6, 8, 9.
 | `0x605a7700` +36 | 1 (loaded end `0x605a7800`) | om5_noop_hook | trampoline, counts S1 presses | emulator |
 | `0x605a7700` +153 | 1 | om5_sd_probe | hook + gate | emulator |
 | `0x615e9900` +196 | 8 (loaded end `0x615ea000`) | om5_sd_probe | loader (malloc, fopen, fseek, ftell, fread, fclose, free) | emulator |
+| `0x614ce690` +7, `0x615e9860` +66 | 8 | om5_color_core | capture handler getptr(63210) call -> `cc_hook` (mode 11 reads profile store 63226) | emulator |
 
 RAM: `0x6218a262` (u16) = OlyHfwEventManager singleton +174, the C4 counter and the C5 state (never both). Free tails left (loaded part only):
 section 1 `0x605a7799`-`0x605a7800` after C5 (0x67 B), section 2 `0x60620580`-`0x60620800`, section 4 `0x608458d8`-`0x60846000`, section 8

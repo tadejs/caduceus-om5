@@ -113,7 +113,7 @@ def build(spec, stock_bytes, body=bodies.EP7, recompress_all=False):
     for k in kinds:
         b = by_kind[k]
         if k == 0x100 and comp_spans:
-            newpay = oz.repack(bytes(payloads[k]), b.payload, only=touched) if touched else b.payload
+            newpay = oz.repack(bytes(payloads[k]), b.payload, only=touched)     # touched may be empty: plain-section edits still apply
         else:
             newpay = bytes(payloads[k])
         nb = oc.replace_payload(b, newpay) if newpay != b.payload else b

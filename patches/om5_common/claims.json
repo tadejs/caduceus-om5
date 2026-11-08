@@ -49,5 +49,17 @@
    "len": 196,
    "what": "load: c5 loader (malloc/fopen/fseek/ftell/fread/fclose/free)"
   }
+ ],
+ "om5_color_core": [
+  {
+   "addr": "0x614ce690",
+   "len": 7,
+   "what": "hook: getptr(63210) call in the capture handler -> jmp cc_hook"
+  },
+  {
+   "addr": "0x615e9860",
+   "len": 66,
+   "what": "tramp: cc_hook: profile saturation source for mode 11"
+  }
  ]
 }

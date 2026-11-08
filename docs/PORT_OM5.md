@@ -391,3 +391,46 @@ The owner reports no pink cast on the OM-5 screen, so the port is on hold. What 
 - **References** [V word search]: one word reference each, table `0x601a334e` and template `0x601a32b2`, both inside the fill routine.
 - **Difference from the E-P7** [V dis]: the OM-5 routine also reads a 15 x u16 table indexed by colour step (init image `0x6025e908`, values 0x10d..0x1ce) and stores it at buffer +18 of the same command buffer. Its meaning is not known and a G/M slider that replaces the colour-temperature axis would leave it still following the colour step. Check that before any port.
 - Not done: the Monitor Adjust range, native emulator run, and the mutation checks. No patch, verifier or C6 package was built.
+
+## COLOR 1-3 back end: batch 1 (2026-11-08, emulator only, no camera)
+
+Tags: [V dis] disassembly, [V emu] native run in om-emu/fishcu, [I] inference. Nothing here has run on a camera.
+
+**What om-emu can and cannot show [V emu].** In om-emu E144 and E142 the capture-parameter handler (OM-5 `0x614ce341`), the record-table builder
+(`0x602c9fa4`), the slot copy (`0x6041487e`), the property fill (`0x614cf122`) and the converter are never reached at boot, S1, S2 or PLAY: the
+image pipeline is not emulated, so "S2 with mode 11 forced" exercises nothing of COLOR. Forcing property 38017 = 11 after boot changes nothing visible.
+The back end was therefore run natively inside a booted om-emu session (code chunks and functions entered with chosen registers and property
+values; scratch RAM `0x62800000`).
+
+**Property plumbing [V dis].** Setting id -> (property key, element) table: OM-5 `0x60514fec`, E-P7 `0x604d6c14`, 4 B entries, indexed by setting id.
+Picture mode sid 111 = key 38017; profile number sid 903 = key 63153 (E-P7 908); effective 12 sector saturations sids 910-921 = key 63210 (E-P7
+915-926); profile store sids 922-957 = key 63226 elements 0-35 (E-P7 927-962, 48 elements); COLOR enable flags sids 1016-1018 = key 63521. All of
+it survives on the OM-5. Property getter `0x6005fa8d` (E-P7 `0x6005e971`), data-pointer getter `0x6005fa63`.
+
+**Where the saturation comes from [V dis, V emu].** The capture handler's main path (OM-5 `0x614ce4cd`..`0x614ce6ac`, E-P7 `0x602a856e`..`0x602a86f9`) sets
+cap mode = property 38017 (cap+28727), profile = 63153 for mode 11 (cap+28757) and copies the **effective** array 63210 into cap+28732 (E-P7
+cap+24058). Native run on E-P7 (E142) and on OM-5 stock (E144) with mode 11, profile 2, 63210 = 100+i, 63226 = 200+i: both give mode 11, profile 2 and
+S = 100..111, i.e. the profile store is not consulted. On the E-P7 the effective array holds the chosen profile's values because the
+picture-parameter builder `0x602b7b71` handles public modes 54-56 (reads 927-938 etc. into its result struct, which its wrapper writes to the
+settings). The OM-5 builder `0x602dcce9` sends 54-59 to the default and its result struct is smaller (80 B, no per-sector fields), so porting the handlers
+means extending struct and wrapper: not done. The record fill `0x603f221f` (E-P7) reads 63226 directly: native run, templates `0x6053e4f8`+16k give
+S = 63226[12(k-1)+i], mode 11, profile k.
+The OM-5 stock property-fill path (`0x614cf122`, profile from key 63601) already reads 63226 for mode 11 [V dis]; it is used for RAW development,
+not the capture path above.
+
+**Fix: `patches/om5_color_core`** (`tools/om5_verify_color_core.py`: ALL PASS, 65 checks, 40 engine runs, 3 mutations caught). Hook `0x614ce690` (the
+`call 0x6005fa63` after `mov 63210,d0`) -> `jmp cc_hook` at `0x615e9860` (section 8 FF tail, 66 B, claimed). For cap mode 11 and profile 1..3 the
+array pointer becomes `getptr(63226) + (profile-1)*24`; otherwise (other modes, profile 0 or >3, key absent) the stock call. Native run in om-emu E144 with the
+patch, 63226 = 200+i: profile 1/2/3 -> S = 200..211 / 212..223 / 224..235 (E-P7 record fill: identical arrays); profile 0, 4, and modes 3, 12 -> S = 100..111 as stock.
+Converter `0x6041a5e7` copies those halfwords to bytes (params+5538..5549) for mode 11 [V dis]; the builder `0x603e2f1c` consumes them (byte-identical to the E-P7
+builder, earlier section).
+Regression: om-emu E144 `modelcheck --no-port` ok (TFT and EVF); with the patch applied and mode forced to 11, S1/S2 complete without fault (the hook is not
+reached there, see above).
+
+**Not done / unverified.** (1) Per-profile contrast, sharpness and the three per-profile scalars (keys 63178/63194/63241/63257/63273, sids 904-909,
+958-966) are not loaded: only saturation is. (2) No Picture Mode row, label or profile selector exists, so mode 11 cannot be chosen on the camera; the E-P7 picks the
+profile with the lever list sid 1646, which the OM-5 lacks (design for step 4: validator list for sid 111 relocated, rows for COLOR 1-3, a way to set sid 903, labels
+from table `0x61250afc` rows 54/55/56; the list builder `0x60e513eb` sets list id 1608 and has not been traced: judged large, stopped here). (3) The record
+table (bracketing / alternative slots, builder `0x602c9fa4`, 36 B templates at `0x6046b9ac`) has no mode-11 entries; not needed for the capture path above, not ported. (4) Whether the
+real firmware reaches the handler's main path for a normal still shot (and not only the property-fill path) is [I] from the E-P7 doc; om-emu cannot show it.
+(5) `tools/build_package.py`: a spec with no compressed-span edit used to fail ("changed bytes 0 != edited"); fixed (repack with an empty set).
