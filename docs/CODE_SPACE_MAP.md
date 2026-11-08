@@ -167,3 +167,22 @@ Every row above is E-P7 only. **Do not reuse the E-P7 dead EVF gamma tables here
 | 0x602d70a1 (5), 0x602b77a8 (5), 0x603f351c (6), 0x603f6055 (6), 0x603bd332 (5), 0x603be45b (7) | hooks | sd_hook, cap_over, conv1, conv2, hl, tone |
 | 0x602b7627; 10 WB; 5 shading; 2 NR (4 B each, rel32) | hooks | m_get; wb_get; sc_get; nr_get: addresses in patches/em10iv_vivid/build.py |
 | 0x6036164c (3), 0x60361769 (2) | data | Job size 15484 → 15508; tail memset 16 → 40 |
+
+## OM-5 1.2 (run-time addresses, base 0x60021020; claims in `patches/om5_common/claims.json`)
+
+Only the **loaded** part of a section is in RAM (`docs/PORT_OM5.md`, "Only the loaded part"); `om5_common` refuses claims beyond it. Load
+order of sections (table indices): 0, 7, 1, 2, 3, 4, 5, 6, 8, 9.
+
+| Range | Section | Patch | What | State |
+|---|---|---|---|---|
+| `0x60dc58f6` +7, `0x60dc5952` +7 | 6 (LZ4) | om5_fw_version (C3) | Body value setter calls -> `fw_val` | emulator |
+| `0x61241c7c` +8 | 6 (LZ4) | om5_fw_version | Body label descriptor | emulator |
+| `0x613f2ba0` +44 | 7 (loaded end `0x613f3000`) | om5_fw_version | `fw_val`, version string, label | emulator |
+| `0x602ed768` +5 | 1 | om5_noop_hook (C4) **or** om5_sd_probe (C5) | S1 event tracker call -> `jmp` | emulator; C4 and C5 are never in one package |
+| `0x605a7700` +36 | 1 (loaded end `0x605a7800`) | om5_noop_hook | trampoline, counts S1 presses | emulator |
+| `0x605a7700` +153 | 1 | om5_sd_probe | hook + gate | emulator |
+| `0x615e9900` +196 | 8 (loaded end `0x615ea000`) | om5_sd_probe | loader (malloc, fopen, fseek, ftell, fread, fclose, free) | emulator |
+
+RAM: `0x6218a262` (u16) = OlyHfwEventManager singleton +174, the C4 counter and the C5 state (never both). Free tails left (loaded part only):
+section 1 `0x605a7799`-`0x605a7800` after C5 (0x67 B), section 2 `0x60620580`-`0x60620800`, section 4 `0x608458d8`-`0x60846000`, section 8
+`0x615e99c4`-`0x615ea000`, section 7 `0x613f2bcc`-`0x613f3000`.

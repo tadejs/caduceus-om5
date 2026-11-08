@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 IMAGE = ROOT / 'analysis/om5_1200/main.expanded.bin'
 BASE = 0x60021020
 BCS_OFF = 0x6fd8
+LOADED_END_JT = 0x600473dc          # jump table of 0x600462f3 (section id -> end of the part of the section that is COPIED to RAM)
 REGISTRY = Path(__file__).with_name('claims.json')
 TC = '$HOME/ep7fw-toolchains/mn10300/bin'          # inside WSL (or the native Linux shell)
 _img = None
@@ -49,19 +50,35 @@ def assert_stock(addr, expect):
     return expect
 
 
+def loaded_ends():
+    """End address of the part of each section that the boot code copies to RAM (section id n = index n-1). It is smaller than
+    the BCS span (the span runs to the next section): bytes between the loaded end and the span end are not in RAM, so code
+    placed there does not exist at run time. [V dis: 0x600462f3 maps id -> end through the jump table 0x600473dc; each case is
+    `mov imm32,d0`; the copy size is that end minus the section's dest, sec_copy 0x6004635c.]"""
+    out = []
+    for i in range(10):
+        tgt = struct.unpack_from('<I', image(), LOADED_END_JT - BASE + 4 * i)[0]
+        ins = stock(tgt, 6)
+        if ins[:2] != bytes([0xfc, 0xcc]):
+            raise SystemExit(f'loaded-end case {i + 1} at {tgt:#x} is not `mov imm32,d0`: {ins.hex()}')
+        out.append(struct.unpack_from('<I', ins, 2)[0])
+    return out
+
+
 class Section:
-    def __init__(self, idx, start, end, compressed):
+    def __init__(self, idx, start, end, compressed, loaded_end=None):
         self.idx, self.start, self.end, self.compressed = idx, start, end, compressed
+        self.loaded_end = min(end, loaded_end) if loaded_end else end
 
     @property
     def tail(self):
-        """(start, length) of the trailing FF run of the section."""
+        """(start, length) of the trailing FF run of the LOADED part of the section (length 0 if it does not end in FF)."""
         d = image()
-        o = self.end - BASE
+        o = self.loaded_end - BASE
         n = 0
-        while n < self.end - self.start and d[o - 1 - n] == 0xff:
+        while n < self.loaded_end - self.start and d[o - 1 - n] == 0xff:
             n += 1
-        return self.end - n, n
+        return self.loaded_end - n, n
 
     def __repr__(self):
         return f'<sec {self.idx} {self.start:#x}-{self.end:#x}{" LZ4" if self.compressed else ""}>'
@@ -72,7 +89,8 @@ def sections():
     assert d[BCS_OFF:BCS_OFF + 4] == b'BCS\0', 'BCS table not where expected'
     ents = [struct.unpack_from('<III', d, BCS_OFF + 4 + 12 * i) for i in range(10)]
     end = BASE + len(d)
-    return [Section(i, e[0], ents[i + 1][0] if i + 1 < len(ents) else end, bool(e[2])) for i, e in enumerate(ents)]
+    le = loaded_ends()
+    return [Section(i, e[0], ents[i + 1][0] if i + 1 < len(ents) else end, bool(e[2]), le[i]) for i, e in enumerate(ents)]
 
 
 def section_of(addr):
@@ -97,8 +115,9 @@ class Claims:
 
     def _claim(self, name, addr, n, what, compressed):
         s = section_of(addr)
-        if addr + n > s.end:
-            raise SystemExit(f'claim {name}: {addr:#x}+{n:#x} crosses the end of section {s.idx}')
+        if addr + n > s.loaded_end:
+            raise SystemExit(f'claim {name}: {addr:#x}+{n:#x} is beyond the loaded end {s.loaded_end:#x} of section {s.idx} '
+                             f'(not copied to RAM; span end {s.end:#x})')
         if s.compressed and not compressed:
             raise SystemExit(f'claim {name} at {addr:#x} is in compressed section {s.idx} (LZ4, re-encoded by the builder): '
                              'pass compressed=True to accept that')

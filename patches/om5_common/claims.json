@@ -40,9 +40,14 @@
    "what": "hook: S1 event tracker call (call TRIG,[d2,d3,a2,a3],36)"
   },
   {
-   "addr": "0x605a7800",
-   "len": 344,
-   "what": "code: c5 probe code"
+   "addr": "0x605a7700",
+   "len": 153,
+   "what": "code: c5 hook + gate"
+  },
+  {
+   "addr": "0x615e9900",
+   "len": 196,
+   "what": "load: c5 loader (malloc/fopen/fseek/ftell/fread/fclose/free)"
   }
  ]
 }

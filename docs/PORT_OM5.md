@@ -73,9 +73,21 @@ The E-P7 table has 9 entries in the same layout, without flags. FF runs are in t
 
 (E-P7 tails for comparison, sections 0–8: 0x3ffc, 0x1cc50, 0x3880, 0x128e4, 0x9300, 0x84650, 0x44398, 0x4000, 0x4e2afe.)
 
-- Load order is **unknown**: the loader loop was not found. Don't assume table order: the E-P7 loads 1, 7, 2–6, 8, 9
-  (`docs/BOOTLOOP_T3.md`) [V for the E-P7]. Code hooked in an early
-  section must not call into a later one before that section is loaded (the OM-3 lesson).
+- **Only the loaded part of a section is in RAM [V dis, 2026-11-08].** The boot code copies each section from its flash source up to an *end*
+  that is usually below the next section's start (the BCS span). The ends come from `0x600462f3` (jump table `0x600473dc`, each case
+  `mov imm32,d0`); the copy is `sec_copy` `0x6004635c` (id n = table index n-1; size = end - dest). Loaded ends by index 0..9:
+  `0x6023e800 0x605a7800 0x60620800 0x6082b000 0x60846000 0x60cb0000 0x6133b000 0x613f3000 0x615ea000 0x6169c000`.
+  So the "Tail FF" column above is **only usable up to the loaded end**: usable tails are index 1 `0x605a76c8`-`0x605a7800` (0x138 B),
+  2 `0x60620580`-`0x60620800` (0x280), 3 `0x6082afb4`-`0x6082b000` (0x4c), 4 `0x608458d8`-`0x60846000` (0x728), 5 `0x60cafac0`-`0x60cb0000`,
+  6 `0x6133aac0`-`0x6133b000`, 7 `0x613f2b78`-`0x613f3000` (0x488), 8 `0x615e9848`-`0x615ea000` (0x7b8). Sections 0 and 9 have no tail
+  (their FF runs start beyond the loaded end). **The earlier "largest tails" (section 9 `0x13d494`, section 1 `0x27138`, section 8
+  `0x1ffb8`) are void**: that space is not copied to RAM. `patches/om5_common` now refuses a claim beyond the loaded end.
+  The C3 label code (`0x613f2ba0`+0x2c) is inside the loaded part of section 7.
+- **Load order [V dis for the call order, I that the calls run in this order]:** `sec_copy` is called for ids 1, 8, 2, 3, 4, 5, 6, 7, 9, 10, that
+  is table indices 0, 7, 1, 2, 3, 4, 5, 6, 8, 9 (calls at `0x6004599f`, `0x600459d8`, `0x60045a7a` …), each setting bit n-1 of the u32 `0xa2693fa0`
+  after its copy returns (`0x600463ff`). A hook must not call code in a section that is not yet copied; code that runs from a hook can test
+  `(0xa2693fa0 & 0x3ff) == 0x3ff` first (the C5 gate does). The E-P7 order is 1, 7, 2–6, 8, 9 (`docs/BOOTLOOP_T3.md`); the OM-3's is 1..10.
+  Earlier line: "Load order is unknown": superseded.
 - Sections 5 and 6 are the compressed ones. Their tail FF (0xed40, 0x8d40) is real run-time free space, but using it
   means expanding, editing and **repacking** the container, then checking that the packed size still fits the flash span
   (about 2.4 MB and 4.1 MB of slack). No patch has been tried this way [I].
@@ -299,7 +311,56 @@ Either way the look format and Control Panel stay shared: one entry in `webapp/s
    E-P7's mode-11 record template and fill before any Picture Mode row is added. A row on its own is not a safe test.
 3. Work on the expanded image only: `tools/olycompress.py expand`, then `main.expanded.bin`. Any patch in sections 5 or 6
    (`0x60847000`–`0x61343800`) needs a repack and a packed-size check; sections 0–4 and 7–9 are plain. Decide where the
-   OM-5 patch code goes using the section table (largest plain tails: section 9 0x13d494 at `0x616a3b4c`, section 1
-   0x27138 at `0x605a76c8`, section 8 0x1ffb8 at `0x615e9848`).
+   OM-5 patch code goes using the section table (usable plain tails: the loaded-end list above; the first version of this line named tails that are not in RAM, void).
 4. Open items from the redo: the section-load loop (not located), the recording-limit site (no E-P7 shape), what opens the
    views of `0x60a34cb5` (12 vtable slots), and the meaning of setting 903 (E-P7 908).
+
+## C4 and C5: the S1 hook and the SD probe (2026-11-08, emulator only)
+
+Nothing here has run on a camera. Tags: [V dis] disassembly, [V emu] fishcu engine or om-emu run, [I] inference.
+
+**Hook site [V dis].** The E-P7 SD-loader trigger (`0x602c805f`, `call 0x602c818c,[d2,d3,a2,a3],36`, reached for events with low half
+`0x100`/`0x101`) is the same code on the OM-5 at **`0x602ed768`** (`call 0x602ed895,[d2,d3,a2,a3],36`, 5 B, section 1, plain). The 33 bytes
+around it match byte for byte except the displacement; the callee is a table-driven variant of the E-P7's tracker, with the same effect
+(S1 press `0x02000100` sets bit 1 of the tracker word `0x61e3a640`, release `0x02000101` clears it) and the same canonical event written
+through `a0`. Continuation `0x602ed76d` (`mov (16,sp),d0`); `d0`, `d1`, `a0`, `a1` are dead there. The hook is a 5-byte `jmp` (`dc`) to a
+trampoline that replays the call on the same frame, then continues: registers and stack equal stock.
+
+**Spare RAM word [V dis, I for the clear].** `0x6218a262`, u16: padding at +174 of the "OlyHfwEventManager" singleton `0x6218a1b4` (ctor
+`0x6085bb3e` writes +172 u16 = -1 and +176 u32 = 0; getter `0x6085bd1a`, 67 callers; vtable `0x60b4e5f0`, 36 slots; the HLS_EVENT task creation
+`0x6085bed2` stores its tid at +172). Same layout as the E-P7's `0x622cbcc2` and the OM-3's `0x62b4dd16`. Nothing references it (no word equals
+any of `0x6218a260..67`, no class method, getter user or other class code touches +172..+175 except the ctor and the tid code), the next object
+starts at `0x6218a268`, and the `.bss` is cleared at boot by the DMA fill `0x6002146d`: here three calls (`0x61ec9e80`, `0x6205bd80`-`0x62550800`
+from `0x600281da`, `0x62550800`-`0x627318c8`); the word is in the third. The clear itself is [I], as on the E-P7. Verified by `tools/om5_verify_noop_hook.py`.
+
+**C4 [V emu].** `patches/om5_noop_hook`: the trampoline at `0x605a7700` (section 1 FF tail, the hook's own section) counts S1 presses in the
+word. `tools/om5_verify_noop_hook.py`: ALL PASS (D/T/X/E, 18 runs, 3 mutations caught). om-emu E144: counter 0 at boot, 1 after S1, 2 after S2
+(it half-presses first), unchanged by PLAY/INFO, 3 and 4 after two more S1; stock leaves it 0. The 17-frame walk equals the C2 (stock content) frames
+except the firmware screen, which shows "Caduceus : 0.2".
+
+**C5 [V emu].** `patches/om5_sd_probe`: the same hook; at the first gated S1 press it reads `C:\OM5MOD\BUNDLES.BIN`'s 32-byte header into a
+`malloc(1024)` block and stores 0 / `0xFFFF` / handle in the word. Hook and gate sit in the section-1 tail (`0x605a7700`), the loader in the section-8
+tail (`0x615e9900`); the gate (all ten section bits, `get_tid` == HLS tid, a medium status word == `0xF000`) runs before the loader is called, so
+the later section is loaded by then. OM-5 addresses found by structure against the E-P7 wrappers and checked by `tools/om5_verify_sd_probe.py`:
+malloc `0x60023818`, free `0x6002384a` (class-1 pool `0xa1e27d80`-`0xa1e32ac0`, 129..2048 B), fopen `0x606ab541`, fclose `0x606ab54a`, fread
+`0x606ab6d0`, ftell `0x606ab75e`, fseek `0x606ab7c8` (whence 1 END, 2 SET), get_tid `0x600317b4`; section bits `0xa2693fa0`; media words
+`0x61e43338/40/48/50`. Verifier: ALL PASS (22 scenarios, 4 mutations caught). om-emu: with the section bits and one media word stood in (om-emu does
+not run the boot section loader or the media manager's mount word, as the OM-3 notes say) and a card formatted by the firmware: no file -> `0xFFFF`;
+`OM5MOD/BUNDLES.BIN` with magic `OM5B` -> `0x7bc1` and the header in the block; wrong magic or a 16-byte file -> `0xFFFF`; no fault, shooting continues,
+frames as in C4 (label "Caduceus : 0.3"). Without the stand-ins the gate does not open and the state stays 0. The HLS tid word is set by the real
+firmware in om-emu (0xa2). Open: on a real camera the status is not visible; whether the SD slot's media word is one of the four is [I].
+`tools/om5_card_add_file.py` puts the test file on an om-emu card image.
+
+## Camera packages (`out/`, not committed)
+
+Each folder has `DCOLYMP/E1449999.BIN`, `restore/E1449999.BIN` (the official file) and `SHA256SUMS`; C5 adds `OM5MOD/BUNDLES.BIN` (32 bytes, `OM5B`).
+
+| Step | `DCOLYMP/E1449999.BIN` SHA-256 | What it proves |
+|---|---|---|
+| C1 | `a0c91f3ac7caaf0925b2af609e711183cf3b5982b3333224bcef26c0c5943d11` | the official file through the SD updater (the trigger works on the OM-5) |
+| C2 | `35411d71ec724c0367488fbd0c4eb98f3191b3c2f9cc66f20f6f0c41a79e53e9` | the bootloader accepts our LZ4 re-encoding |
+| C3 | `337b91988d59b8e0df26428391ad062184043f8af5f12c75f61ad64087df90b7` | a patched byte in a compressed span runs; firmware screen "Caduceus : 0.1" |
+| C4 | `dc84df0b8540a92fea74e819fa843bfe6b2ec3b65984998e13feb80a5cbf65cf` | our code runs at S1 without changing behaviour; "Caduceus : 0.2" |
+| C5 | `1d4459c072807469e8aa25a6403131e158b60c0c26027e7540e315d84ea61b55` | file I/O from the hook is safe with and without the card file; "Caduceus : 0.3" |
+
+All `restore/` files: `a0c91f3a…3d11`. C2–C5 are main-only packages.
