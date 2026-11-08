@@ -1,5 +1,7 @@
 # Notes for agents
 
+**Porting Caduceus to another body, or patching the firmware?** Start with [`docs/FIRMWARE_GUIDE.md`](docs/FIRMWARE_GUIDE.md): how the E-P7 1.1 firmware is built, how to patch it safely, the lessons behind each safety rule, and a porting checklist.
+
 ## One Control Panel for every camera
 
 The goal is **one Control Panel, one look format and one set of share codes**, hosted from this repo, with each camera as a selectable profile. Separate per-camera panels are meant to retire into this one. For the OM-3, that means `androidfanman/caduceus-om3`'s panel, once this has been agreed with its author.
