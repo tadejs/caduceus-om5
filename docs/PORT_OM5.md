@@ -380,3 +380,14 @@ Results on the owner's OM-5:
 - **C5 passed [C, 2026-11-08].** SD probe (`1d4459c0`): "Caduceus 0.3"; half-press, photos, playback, menu and video
   normal both with `OM5MOD/BUNDLES.BIN` on the card and without it. File I/O from the S1 hook does not disturb the camera;
   whether the read succeeded is not visible (the status word is in RAM only). The camera ladder C1-C5 is complete.
+
+## LCD tint: panel table analysis (2026-11-08, port paused, nothing built)
+
+The owner reports no pink cast on the OM-5 screen, so the port is on hold. What the bytes say (expanded image, base `0x60021020`):
+
+- **Fill routine** `0x601a32ab` (E-P7 `0x60184360`) [V dis]. Same shape: copies a 70-B template, then `row = brightness*390 + colourtemp*26` into the 0xd9 data (words 0..3 -> buffer +46..52) and 0x91 data (words 4..7 -> +32..38). Brightness is `0x620c62f7`, colour step `0x620c62f6`.
+- **Data** [V bytes]: 225 x 26-B row table at init image `0x6025d22e` (runtime `0x61e384ee`), identical byte for byte to the E-P7 table; every row has marker 0x01 and mode 0x80 or 0x91; step 7 row starts `91 01 00 01 e0 01 00 01`, so the neutral G is `0xe0` as on the E-P7. Init sequences `0x6025d038`, `0x6025d0fc` and template `0x6025e948` (70 B) equal the E-P7 ones; their G bytes (+6, +6, +0x32) are `0xe0`.
+- **.data init delta** `+0x1bdb2c0` [V dis]: the boot copy at `0x600211e7..` reads flash `0x60257800` (from `0x409b6800`) to RAM `0x61e32ac0`, size to `0x602940c4`, which covers all of the above.
+- **References** [V word search]: one word reference each, table `0x601a334e` and template `0x601a32b2`, both inside the fill routine.
+- **Difference from the E-P7** [V dis]: the OM-5 routine also reads a 15 x u16 table indexed by colour step (init image `0x6025e908`, values 0x10d..0x1ce) and stores it at buffer +18 of the same command buffer. Its meaning is not known and a G/M slider that replaces the colour-temperature axis would leave it still following the colour step. Check that before any port.
+- Not done: the Monitor Adjust range, native emulator run, and the mutation checks. No patch, verifier or C6 package was built.
